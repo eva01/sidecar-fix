@@ -112,9 +112,19 @@ func cmdList() {
 
 // MARK: - Setup
 
+func executableURL() -> URL {
+    // _NSGetExecutablePath returns the real path regardless of argv[0] or shell aliasing.
+    var buf = [CChar](repeating: 0, count: Int(PATH_MAX))
+    var size = UInt32(PATH_MAX)
+    guard _NSGetExecutablePath(&buf, &size) == 0 else {
+        return URL(fileURLWithPath: CommandLine.arguments[0]).resolvingSymlinksInPath()
+    }
+    return URL(fileURLWithPath: String(cString: buf)).resolvingSymlinksInPath()
+}
+
 func cmdSetup() {
     // Resolve the plist bundled alongside the binary: <prefix>/com.jin.sidecar-fix.plist
-    let binaryURL = URL(fileURLWithPath: CommandLine.arguments[0]).standardized
+    let binaryURL = executableURL()
     let prefixURL = binaryURL.deletingLastPathComponent().deletingLastPathComponent()
     let plistSrc = prefixURL.appendingPathComponent("com.jin.sidecar-fix.plist")
 
@@ -138,6 +148,8 @@ func cmdSetup() {
         exit(1)
     }
 
+    // Unload first in case the agent is already registered, then reload.
+    Process.run("/bin/launchctl", args: ["unload", plistDst.path])
     let result = Process.run("/bin/launchctl", args: ["load", plistDst.path])
     guard result == 0 else {
         fputs("error: launchctl load failed (exit \(result))\n", stderr)
