@@ -112,6 +112,9 @@ func cmdDaemon() {
 
     // Poll every 3 seconds. CGDisplayRegisterReconfigurationCallback requires a
     // WindowServer connection that launchd agents don't have, so polling is more reliable.
+    let binary = executableURL().path
+    let uid = String(getuid())
+
     Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { _ in
         guard let data = try? Data(contentsOf: configFile),
               let saved = try? JSONDecoder().decode(Arrangement.self, from: data),
@@ -121,7 +124,9 @@ func cmdDaemon() {
         guard Int32(current.origin.x) != saved.x || Int32(current.origin.y) != saved.y else { return }
 
         log("Wrong position detected (\(Int(current.origin.x)), \(Int(current.origin.y))), restoring to (\(saved.x), \(saved.y))...")
-        applyArrangement()
+        // Use launchctl asuser to run apply in the user's GUI session, which has
+        // the WindowServer write access needed for CGCompleteDisplayConfiguration.
+        Process.run("/bin/launchctl", args: ["asuser", uid, binary, "apply"])
     }
 
     RunLoop.main.run()

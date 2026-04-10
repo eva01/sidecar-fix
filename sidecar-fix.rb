@@ -1,9 +1,9 @@
 class SidecarFix < Formula
   desc "Auto-restore Sidecar display arrangement via CoreGraphics display callbacks"
   homepage "https://github.com/eva01/sidecar-fix"
-  url "https://github.com/eva01/sidecar-fix/releases/download/v0.4.1/sidecar-fix-v0.4.1-macos.tar.gz"
-  sha256 "795a0906cfdcbb3dfac7347b8a0fdbbd4caf258176ba8a8bc6db3b1659cb543e"
-  version "0.4.1"
+  url "https://github.com/eva01/sidecar-fix/releases/download/v0.4.2/sidecar-fix-v0.4.2-macos.tar.gz"
+  sha256 "ac9ec15cd200422ed46bcd724b8c264dd036743d7371de7b553a82be2b057ce3"
+  version "0.4.2"
   license "MIT"
 
   depends_on :macos
