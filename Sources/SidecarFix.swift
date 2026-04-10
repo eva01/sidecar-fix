@@ -97,18 +97,33 @@ func cmdApply() {
     applyArrangement()
 }
 
-func cmdDaemon() {
-    // Register for display reconfiguration callbacks — fires whenever any display
-    // is added, removed, or reconfigured. More reliable than WatchPaths on macOS 13+.
-    CGDisplayRegisterReconfigurationCallback({ _, flags, _ in
-        // Skip the "begin" half of the transaction; wait for the "complete" half.
-        guard !flags.contains(.beginConfigurationFlag) else { return }
-        print("Display reconfiguration detected, applying arrangement...")
-        Thread.sleep(forTimeInterval: sidecarApplyDelay)
-        applyArrangement()
-    }, nil)
+func log(_ message: String) {
+    // print() buffers when stdout is a file; flush explicitly so launchd log is live.
+    print(message)
+    fflush(stdout)
+}
 
-    print("sidecar-fix daemon running.")
+func cmdDaemon() {
+    // Disable stdout/stderr buffering so writes reach the launchd log file immediately.
+    setbuf(stdout, nil)
+    setbuf(stderr, nil)
+
+    log("sidecar-fix daemon running.")
+
+    // Poll every 3 seconds. CGDisplayRegisterReconfigurationCallback requires a
+    // WindowServer connection that launchd agents don't have, so polling is more reliable.
+    Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { _ in
+        guard let data = try? Data(contentsOf: configFile),
+              let saved = try? JSONDecoder().decode(Arrangement.self, from: data),
+              let sidecarID = findSidecarDisplay() else { return }
+
+        let current = CGDisplayBounds(sidecarID)
+        guard Int32(current.origin.x) != saved.x || Int32(current.origin.y) != saved.y else { return }
+
+        log("Wrong position detected (\(Int(current.origin.x)), \(Int(current.origin.y))), restoring to (\(saved.x), \(saved.y))...")
+        applyArrangement()
+    }
+
     RunLoop.main.run()
 }
 
