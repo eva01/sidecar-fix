@@ -34,11 +34,15 @@ That's it. Every time you reconnect, the position is restored automatically.
 ## How it works
 
 - `setup` installs a `KeepAlive` launchd agent that runs `sidecar-fix daemon` at login
-- The daemon registers a `CGDisplayRegisterReconfigurationCallback` with CoreGraphics
-- When any display is connected or reconfigured, the callback fires, waits 2 seconds for macOS to finish its own reconfiguration, then moves the Sidecar display back to the saved position
-- If no Sidecar display is connected, it does nothing
+- The daemon polls every 5 seconds using CoreGraphics to check the Sidecar display position
+- If the position has drifted, it spawns `sidecar-fix apply` via `launchctl asuser` (required for WindowServer write access from a launchd agent) which waits 2 seconds then restores the saved position
+- If no Sidecar display is connected, each poll does nothing and returns immediately
 
-The daemon is idle between display events and uses negligible CPU.
+CPU impact is negligible — two CoreGraphics calls and a JSON file read every 5 seconds. All log messages go to the macOS unified log (no log files):
+
+```sh
+/usr/bin/log stream --predicate 'subsystem == "com.jin.sidecar-fix"' --level debug
+```
 
 ## Uninstall
 

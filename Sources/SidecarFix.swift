@@ -1,10 +1,13 @@
 import CoreGraphics
 import Foundation
+import os
 
 // MARK: - Constants
 
 /// macOS needs ~2 s to finish its own reconfiguration before we can move the display.
 let sidecarApplyDelay: TimeInterval = 2.0
+
+let logger = Logger(subsystem: "com.jin.sidecar-fix", category: "main")
 
 // MARK: - Config
 
@@ -43,11 +46,6 @@ func cmdSave() {
 
     do {
         try FileManager.default.createDirectory(at: configDir, withIntermediateDirectories: true)
-    } catch {
-        fputs("error: could not create config directory: \(error)\n", stderr)
-        exit(1)
-    }
-    do {
         let data = try JSONEncoder().encode(arrangement)
         try data.write(to: configFile)
     } catch {
@@ -65,10 +63,7 @@ func applyArrangement() {
         exit(1)
     }
 
-    guard let sidecarID = findSidecarDisplay() else {
-        // No Sidecar connected — nothing to do
-        return
-    }
+    guard let sidecarID = findSidecarDisplay() else { return }
 
     let current = CGDisplayBounds(sidecarID)
     if Int32(current.origin.x) == saved.x && Int32(current.origin.y) == saved.y {
@@ -97,25 +92,16 @@ func cmdApply() {
     applyArrangement()
 }
 
-func log(_ message: String) {
-    // print() buffers when stdout is a file; flush explicitly so launchd log is live.
-    print(message)
-    fflush(stdout)
-}
-
 func cmdDaemon() {
-    // Disable stdout/stderr buffering so writes reach the launchd log file immediately.
-    setbuf(stdout, nil)
-    setbuf(stderr, nil)
+    logger.notice("sidecar-fix daemon started")
 
-    log("sidecar-fix daemon running.")
-
-    // Poll every 3 seconds. CGDisplayRegisterReconfigurationCallback requires a
-    // WindowServer connection that launchd agents don't have, so polling is more reliable.
     let binary = executableURL().path
     let uid = String(getuid())
 
-    Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { _ in
+    // Poll every 5 seconds. CGDisplayRegisterReconfigurationCallback requires a
+    // WindowServer connection that launchd agents don't have, so polling is used instead.
+    // 5s gives worst-case ~7s response time (5s detect + 2s apply delay) with minimal CPU.
+    Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { _ in
         guard let data = try? Data(contentsOf: configFile),
               let saved = try? JSONDecoder().decode(Arrangement.self, from: data),
               let sidecarID = findSidecarDisplay() else { return }
@@ -123,9 +109,9 @@ func cmdDaemon() {
         let current = CGDisplayBounds(sidecarID)
         guard Int32(current.origin.x) != saved.x || Int32(current.origin.y) != saved.y else { return }
 
-        log("Wrong position detected (\(Int(current.origin.x)), \(Int(current.origin.y))), restoring to (\(saved.x), \(saved.y))...")
-        // Use launchctl asuser to run apply in the user's GUI session, which has
-        // the WindowServer write access needed for CGCompleteDisplayConfiguration.
+        logger.notice("Wrong position (\(Int(current.origin.x)), \(Int(current.origin.y))), restoring to (\(saved.x), \(saved.y))")
+        // Spawn apply via launchctl asuser so it runs in the user's GUI session,
+        // which has the WindowServer write access needed for CGCompleteDisplayConfiguration.
         Process.run("/bin/launchctl", args: ["asuser", uid, binary, "apply"])
     }
 
@@ -207,7 +193,7 @@ func printHelp() {
       list    List active displays and their positions
       save    Save current Sidecar display position
       apply   Apply saved position (one-shot, called by launchd)
-      daemon  Run as persistent daemon using CoreGraphics display callbacks
+      daemon  Run as persistent daemon, polls every 5s (called by launchd)
       setup   Install and load the launchd agent (run once after brew install)
       help    Show this help message
     """)

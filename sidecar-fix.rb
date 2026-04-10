@@ -1,9 +1,9 @@
 class SidecarFix < Formula
   desc "Auto-restore Sidecar display arrangement via CoreGraphics display callbacks"
   homepage "https://github.com/eva01/sidecar-fix"
-  url "https://github.com/eva01/sidecar-fix/releases/download/v0.4.2/sidecar-fix-v0.4.2-macos.tar.gz"
-  sha256 "ac9ec15cd200422ed46bcd724b8c264dd036743d7371de7b553a82be2b057ce3"
-  version "0.4.2"
+  url "https://github.com/eva01/sidecar-fix/releases/download/v0.5.0/sidecar-fix-v0.5.0-macos.tar.gz"
+  sha256 "54ea173074a809ccd559bf1066b8aadfb6834c0355b6d34977b356f36bbfae47"
+  version "0.5.0"
   license "MIT"
 
   depends_on :macos
@@ -30,10 +30,6 @@ class SidecarFix < Formula
         <true/>
         <key>RunAtLoad</key>
         <true/>
-        <key>StandardOutPath</key>
-        <string>/tmp/sidecar-fix.log</string>
-        <key>StandardErrorPath</key>
-        <string>/tmp/sidecar-fix.err</string>
       </dict>
       </plist>
     EOS
@@ -49,8 +45,11 @@ class SidecarFix < Formula
 
         sidecar-fix save
 
-      The daemon polls every 3 seconds and automatically restores your
-      saved Sidecar position whenever it drifts. Logs: /tmp/sidecar-fix.log
+      The daemon polls every 5 seconds and automatically restores your
+      saved Sidecar position whenever it drifts.
+
+      View logs:
+        log stream --predicate 'process == "sidecar-fix"' --level info
     EOS
   end
 
