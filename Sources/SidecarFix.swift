@@ -1,6 +1,11 @@
 import CoreGraphics
 import Foundation
 
+// MARK: - Constants
+
+/// macOS needs ~2 s to finish its own reconfiguration before we can move the display.
+let sidecarApplyDelay: TimeInterval = 2.0
+
 // MARK: - Config
 
 struct Arrangement: Codable {
@@ -36,9 +41,19 @@ func cmdSave() {
     let bounds = CGDisplayBounds(sidecarID)
     let arrangement = Arrangement(x: Int32(bounds.origin.x), y: Int32(bounds.origin.y))
 
-    try? FileManager.default.createDirectory(at: configDir, withIntermediateDirectories: true)
-    let data = try! JSONEncoder().encode(arrangement)
-    try! data.write(to: configFile)
+    do {
+        try FileManager.default.createDirectory(at: configDir, withIntermediateDirectories: true)
+    } catch {
+        fputs("error: could not create config directory: \(error)\n", stderr)
+        exit(1)
+    }
+    do {
+        let data = try JSONEncoder().encode(arrangement)
+        try data.write(to: configFile)
+    } catch {
+        fputs("error: could not write arrangement: \(error)\n", stderr)
+        exit(1)
+    }
 
     print("Saved: Sidecar at (\(arrangement.x), \(arrangement.y))")
 }
@@ -51,7 +66,7 @@ func cmdApply() {
     }
 
     // Wait briefly for macOS to finish its own display configuration after connecting
-    Thread.sleep(forTimeInterval: 2.0)
+    Thread.sleep(forTimeInterval: sidecarApplyDelay)
 
     guard let sidecarID = findSidecarDisplay() else {
         // No Sidecar connected — nothing to do (triggered by other display events)
@@ -95,6 +110,21 @@ func cmdList() {
     }
 }
 
+// MARK: - Help
+
+func printHelp() {
+    print("""
+    Usage: sidecar-fix <command>
+
+    Commands:
+      list   List active displays and their positions
+      save   Save current Sidecar display position
+      apply  Apply saved position to current Sidecar display
+             (called automatically by launchd via WatchPaths)
+      help   Show this help message
+    """)
+}
+
 // MARK: - Entry point
 
 let args = CommandLine.arguments
@@ -104,14 +134,9 @@ switch cmd {
 case "save":  cmdSave()
 case "apply": cmdApply()
 case "list":  cmdList()
+case "help":  printHelp()
 default:
-    print("""
-    Usage: sidecar-fix <command>
-
-    Commands:
-      list   List active displays and their positions
-      save   Save current Sidecar display position
-      apply  Apply saved position to current Sidecar display
-             (called automatically by launchd via WatchPaths)
-    """)
+    fputs("error: unknown command '\(cmd)'\n", stderr)
+    printHelp()
+    exit(1)
 }
