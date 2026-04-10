@@ -58,19 +58,16 @@ func cmdSave() {
     print("Saved: Sidecar at (\(arrangement.x), \(arrangement.y))")
 }
 
-func cmdApply() {
+func applyArrangement() {
     guard let data = try? Data(contentsOf: configFile),
           let saved = try? JSONDecoder().decode(Arrangement.self, from: data) else {
         fputs("error: no saved arrangement — run 'sidecar-fix save' first\n", stderr)
         exit(1)
     }
 
-    // Wait briefly for macOS to finish its own display configuration after connecting
-    Thread.sleep(forTimeInterval: sidecarApplyDelay)
-
     guard let sidecarID = findSidecarDisplay() else {
-        // No Sidecar connected — nothing to do (triggered by other display events)
-        exit(0)
+        // No Sidecar connected — nothing to do
+        return
     }
 
     let current = CGDisplayBounds(sidecarID)
@@ -82,7 +79,7 @@ func cmdApply() {
     var config: CGDisplayConfigRef?
     guard CGBeginDisplayConfiguration(&config) == .success else {
         fputs("error: CGBeginDisplayConfiguration failed\n", stderr)
-        exit(1)
+        return
     }
     CGConfigureDisplayOrigin(config!, sidecarID, saved.x, saved.y)
     let result = CGCompleteDisplayConfiguration(config!, .permanently)
@@ -91,8 +88,28 @@ func cmdApply() {
         print("Applied: Sidecar moved to (\(saved.x), \(saved.y))")
     } else {
         fputs("error: CGCompleteDisplayConfiguration failed (\(result.rawValue))\n", stderr)
-        exit(1)
     }
+}
+
+func cmdApply() {
+    // Wait briefly for macOS to finish its own display configuration after connecting
+    Thread.sleep(forTimeInterval: sidecarApplyDelay)
+    applyArrangement()
+}
+
+func cmdDaemon() {
+    // Register for display reconfiguration callbacks — fires whenever any display
+    // is added, removed, or reconfigured. More reliable than WatchPaths on macOS 13+.
+    CGDisplayRegisterReconfigurationCallback({ _, flags, _ in
+        // Skip the "begin" half of the transaction; wait for the "complete" half.
+        guard !flags.contains(.beginConfigurationFlag) else { return }
+        print("Display reconfiguration detected, applying arrangement...")
+        Thread.sleep(forTimeInterval: sidecarApplyDelay)
+        applyArrangement()
+    }, nil)
+
+    print("sidecar-fix daemon running.")
+    RunLoop.main.run()
 }
 
 func cmdList() {
@@ -167,12 +184,12 @@ func printHelp() {
     Usage: sidecar-fix <command>
 
     Commands:
-      list   List active displays and their positions
-      save   Save current Sidecar display position
-      apply  Apply saved position to current Sidecar display
-             (called automatically by launchd via WatchPaths)
-      setup  Install and load the launchd agent (run once after brew install)
-      help   Show this help message
+      list    List active displays and their positions
+      save    Save current Sidecar display position
+      apply   Apply saved position (one-shot, called by launchd)
+      daemon  Run as persistent daemon using CoreGraphics display callbacks
+      setup   Install and load the launchd agent (run once after brew install)
+      help    Show this help message
     """)
 }
 
@@ -196,11 +213,12 @@ let args = CommandLine.arguments
 let cmd = args.count > 1 ? args[1] : "help"
 
 switch cmd {
-case "save":  cmdSave()
-case "apply": cmdApply()
-case "list":  cmdList()
-case "setup": cmdSetup()
-case "help":  printHelp()
+case "save":   cmdSave()
+case "apply":  cmdApply()
+case "daemon": cmdDaemon()
+case "list":   cmdList()
+case "setup":  cmdSetup()
+case "help":   printHelp()
 default:
     fputs("error: unknown command '\(cmd)'\n", stderr)
     printHelp()

@@ -1,9 +1,9 @@
 class SidecarFix < Formula
-  desc "Auto-restore Sidecar display arrangement via launchd WatchPaths"
+  desc "Auto-restore Sidecar display arrangement via CoreGraphics display callbacks"
   homepage "https://github.com/eva01/sidecar-fix"
-  url "https://github.com/eva01/sidecar-fix/releases/download/v0.3.1/sidecar-fix-v0.3.1-macos.tar.gz"
-  sha256 "37de87f339f2cd2211b8c0fc95517e38070b27f60ad358bd8a66e94825f29c3b"
-  version "0.3.1"
+  url "https://github.com/eva01/sidecar-fix/releases/download/v0.4.0/sidecar-fix-v0.4.0-macos.tar.gz"
+  sha256 "4bb60b2430e1894a6e6ad8d5edfed6a9976aef16e737cacae8e6c4a05a83ff23"
+  version "0.4.0"
   license "MIT"
 
   depends_on :macos
@@ -24,14 +24,16 @@ class SidecarFix < Formula
         <key>ProgramArguments</key>
         <array>
           <string>#{opt_bin}/sidecar-fix</string>
-          <string>apply</string>
+          <string>daemon</string>
         </array>
-        <key>WatchPaths</key>
-        <array>
-          <string>/Library/Preferences/com.apple.windowserver.displays.plist</string>
-        </array>
+        <key>KeepAlive</key>
+        <true/>
         <key>RunAtLoad</key>
-        <false/>
+        <true/>
+        <key>StandardOutPath</key>
+        <string>/tmp/sidecar-fix.log</string>
+        <key>StandardErrorPath</key>
+        <string>/tmp/sidecar-fix.err</string>
       </dict>
       </plist>
     EOS
@@ -47,8 +49,8 @@ class SidecarFix < Formula
 
         sidecar-fix save
 
-      The agent will automatically call `sidecar-fix apply` whenever
-      /Library/Preferences/com.apple.windowserver.displays.plist changes.
+      The daemon uses CoreGraphics callbacks to detect display changes
+      and automatically restores your saved Sidecar position.
     EOS
   end
 
