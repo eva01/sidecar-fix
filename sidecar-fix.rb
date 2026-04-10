@@ -30,8 +30,6 @@ class SidecarFix < Formula
         <true/>
         <key>RunAtLoad</key>
         <true/>
-        <key>SessionCreate</key>
-        <true/>
         <key>StandardOutPath</key>
         <string>/tmp/sidecar-fix.log</string>
         <key>StandardErrorPath</key>
@@ -51,8 +49,8 @@ class SidecarFix < Formula
 
         sidecar-fix save
 
-      The daemon uses CoreGraphics callbacks to detect display changes
-      and automatically restores your saved Sidecar position.
+      The daemon polls every 3 seconds and automatically restores your
+      saved Sidecar position whenever it drifts. Logs: /tmp/sidecar-fix.log
     EOS
   end
 
