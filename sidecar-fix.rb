@@ -1,7 +1,7 @@
 class SidecarFix < Formula
   desc "Auto-restore Sidecar display arrangement via launchd WatchPaths"
-  homepage "https://github.com/eva01/mac-monitor-fix"
-  url "https://github.com/eva01/mac-monitor-fix/releases/download/v0.2.0/sidecar-fix-v0.2.0-macos.tar.gz"
+  homepage "https://github.com/eva01/sidecar-fix"
+  url "https://github.com/eva01/sidecar-fix/releases/download/v0.2.0/sidecar-fix-v0.2.0-macos.tar.gz"
   sha256 "63f370616e63e54edf09986782c3f83ad18dd486064ab352fba0926f65370157"
   version "0.2.0"
   license "MIT"
