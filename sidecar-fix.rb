@@ -1,17 +1,16 @@
 class SidecarFix < Formula
   desc "Auto-restore Sidecar display arrangement via launchd WatchPaths"
   homepage "https://github.com/eva01/sidecar-fix"
-  url "https://github.com/eva01/sidecar-fix/releases/download/v0.2.0/sidecar-fix-v0.2.0-macos.tar.gz"
-  sha256 "63f370616e63e54edf09986782c3f83ad18dd486064ab352fba0926f65370157"
-  version "0.2.0"
+  url "https://github.com/eva01/sidecar-fix/releases/download/v0.3.0/sidecar-fix-v0.3.0-macos.tar.gz"
+  sha256 "a31010ebce537aa42030a060ff40281c39d918406f46aef6b070d7faa6c1d93a"
+  version "0.3.0"
   license "MIT"
 
   depends_on :macos
 
   def install
     bin.install "sidecar-fix"
-    (buildpath/"com.jin.sidecar-fix.plist").write plist_content
-    (buildpath/"com.jin.sidecar-fix.plist")
+    (prefix/"com.jin.sidecar-fix.plist").write plist_content
   end
 
   def plist_content
@@ -38,15 +37,13 @@ class SidecarFix < Formula
     EOS
   end
 
-  def post_install
-    (Dir.home + "/Library/LaunchAgents/com.jin.sidecar-fix.plist").write plist_content
-    system "launchctl", "load", Dir.home + "/Library/LaunchAgents/com.jin.sidecar-fix.plist"
-  end
-
   def caveats
     <<~EOS
-      launchd agent installed and loaded. Now arrange Sidecar to your
-      preferred position, then save it:
+      Run the one-time setup to install the launchd agent:
+
+        sidecar-fix setup
+
+      Then arrange Sidecar to your preferred position and save it:
 
         sidecar-fix save
 

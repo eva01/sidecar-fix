@@ -110,6 +110,44 @@ func cmdList() {
     }
 }
 
+// MARK: - Setup
+
+func cmdSetup() {
+    // Resolve the plist bundled alongside the binary: <prefix>/com.jin.sidecar-fix.plist
+    let binaryURL = URL(fileURLWithPath: CommandLine.arguments[0]).standardized
+    let prefixURL = binaryURL.deletingLastPathComponent().deletingLastPathComponent()
+    let plistSrc = prefixURL.appendingPathComponent("com.jin.sidecar-fix.plist")
+
+    guard FileManager.default.fileExists(atPath: plistSrc.path) else {
+        fputs("error: plist not found at \(plistSrc.path)\n", stderr)
+        exit(1)
+    }
+
+    let launchAgents = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent("Library/LaunchAgents")
+    let plistDst = launchAgents.appendingPathComponent("com.jin.sidecar-fix.plist")
+
+    do {
+        try FileManager.default.createDirectory(at: launchAgents, withIntermediateDirectories: true)
+        if FileManager.default.fileExists(atPath: plistDst.path) {
+            try FileManager.default.removeItem(at: plistDst)
+        }
+        try FileManager.default.copyItem(at: plistSrc, to: plistDst)
+    } catch {
+        fputs("error: could not install plist: \(error)\n", stderr)
+        exit(1)
+    }
+
+    let result = Process.run("/bin/launchctl", args: ["load", plistDst.path])
+    guard result == 0 else {
+        fputs("error: launchctl load failed (exit \(result))\n", stderr)
+        exit(1)
+    }
+
+    print("launchd agent installed and loaded.")
+    print("Now arrange Sidecar to your preferred position, then run: sidecar-fix save")
+}
+
 // MARK: - Help
 
 func printHelp() {
@@ -121,8 +159,23 @@ func printHelp() {
       save   Save current Sidecar display position
       apply  Apply saved position to current Sidecar display
              (called automatically by launchd via WatchPaths)
+      setup  Install and load the launchd agent (run once after brew install)
       help   Show this help message
     """)
+}
+
+// MARK: - Helpers
+
+extension Process {
+    @discardableResult
+    static func run(_ executable: String, args: [String]) -> Int32 {
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: executable)
+        p.arguments = args
+        try? p.run()
+        p.waitUntilExit()
+        return p.terminationStatus
+    }
 }
 
 // MARK: - Entry point
@@ -134,6 +187,7 @@ switch cmd {
 case "save":  cmdSave()
 case "apply": cmdApply()
 case "list":  cmdList()
+case "setup": cmdSetup()
 case "help":  printHelp()
 default:
     fputs("error: unknown command '\(cmd)'\n", stderr)
