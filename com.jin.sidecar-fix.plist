@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.jin.sidecar-fix</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/bin/sidecar-fix</string>
+        <string>apply</string>
+    </array>
+    <key>WatchPaths</key>
+    <array>
+        <string>/Library/Preferences/com.apple.windowserver.displays.plist</string>
+    </array>
+    <key>StandardOutPath</key>
+    <string>/tmp/sidecar-fix.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/sidecar-fix.err</string>
+</dict>
+</plist>
