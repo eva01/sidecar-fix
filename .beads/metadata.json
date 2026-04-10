@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "server",
+  "dolt_database": "mac_monitor_fix",
+  "project_id": "c49cba5a-b545-4296-a2aa-85cdbf5ff3c2"
+}
