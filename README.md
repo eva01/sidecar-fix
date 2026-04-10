@@ -27,17 +27,18 @@ That's it. Every time you reconnect, the position is restored automatically.
 |---|---|
 | `sidecar-fix setup` | Install and load the launchd agent |
 | `sidecar-fix save` | Save current Sidecar display position |
-| `sidecar-fix apply` | Apply saved position (called automatically by launchd) |
+| `sidecar-fix apply` | Apply saved position (one-shot) |
+| `sidecar-fix daemon` | Run as persistent daemon (called automatically by launchd) |
 | `sidecar-fix list` | List all active displays and their positions |
 
 ## How it works
 
-- `setup` installs a launchd `WatchPaths` agent that watches `/Library/Preferences/com.apple.windowserver.displays.plist`
-- When that file changes (i.e. any display event), launchd runs `sidecar-fix apply`
-- `apply` waits 2 seconds for macOS to finish its own reconfiguration, then moves the Sidecar display back to the saved position
-- If no Sidecar display is connected, it exits silently
+- `setup` installs a `KeepAlive` launchd agent that runs `sidecar-fix daemon` at login
+- The daemon registers a `CGDisplayRegisterReconfigurationCallback` with CoreGraphics
+- When any display is connected or reconfigured, the callback fires, waits 2 seconds for macOS to finish its own reconfiguration, then moves the Sidecar display back to the saved position
+- If no Sidecar display is connected, it does nothing
 
-The agent is event-driven — nothing runs in the background between display changes.
+The daemon is idle between display events and uses negligible CPU.
 
 ## Uninstall
 
