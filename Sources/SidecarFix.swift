@@ -145,6 +145,88 @@ func executableURL() -> URL {
     return URL(fileURLWithPath: String(cString: buf)).resolvingSymlinksInPath()
 }
 
+func cmdSet(_ x: Int32, _ y: Int32) {
+    guard let sidecarID = findSidecarDisplay() else {
+        fputs("error: no Sidecar display found — is Sidecar connected?\n", stderr)
+        exit(1)
+    }
+
+    let arrangement = Arrangement(x: x, y: y)
+    do {
+        try FileManager.default.createDirectory(at: configDir, withIntermediateDirectories: true)
+        let data = try JSONEncoder().encode(arrangement)
+        try data.write(to: configFile)
+    } catch {
+        fputs("error: could not write arrangement: \(error)\n", stderr)
+        exit(1)
+    }
+
+    var config: CGDisplayConfigRef?
+    guard CGBeginDisplayConfiguration(&config) == .success else {
+        fputs("error: CGBeginDisplayConfiguration failed\n", stderr)
+        exit(1)
+    }
+    CGConfigureDisplayOrigin(config!, sidecarID, x, y)
+    let result = CGCompleteDisplayConfiguration(config!, .permanently)
+
+    if result == .success {
+        print("Set: Sidecar moved to (\(x), \(y)) and saved.")
+    } else {
+        fputs("error: CGCompleteDisplayConfiguration failed (\(result.rawValue))\n", stderr)
+        exit(1)
+    }
+}
+
+func cmdStop() {
+    let plistDst = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent("Library/LaunchAgents/com.jin.sidecar-fix.plist")
+    guard FileManager.default.fileExists(atPath: plistDst.path) else {
+        fputs("error: agent plist not found — run 'sidecar-fix setup' first\n", stderr)
+        exit(1)
+    }
+    let result = Process.run("/bin/launchctl", args: ["unload", plistDst.path])
+    if result == 0 {
+        print("Daemon unloaded. Arrange Sidecar, then run: sidecar-fix save && sidecar-fix start")
+    } else {
+        fputs("error: launchctl unload failed (exit \(result))\n", stderr)
+        exit(1)
+    }
+}
+
+func cmdStart() {
+    let plistDst = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent("Library/LaunchAgents/com.jin.sidecar-fix.plist")
+    guard FileManager.default.fileExists(atPath: plistDst.path) else {
+        fputs("error: agent plist not found — run 'sidecar-fix setup' first\n", stderr)
+        exit(1)
+    }
+    let result = Process.run("/bin/launchctl", args: ["load", plistDst.path])
+    if result == 0 {
+        print("Daemon loaded.")
+    } else {
+        fputs("error: launchctl load failed (exit \(result))\n", stderr)
+        exit(1)
+    }
+}
+
+func cmdUninstall() {
+    let plistDst = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent("Library/LaunchAgents/com.jin.sidecar-fix.plist")
+
+    if FileManager.default.fileExists(atPath: plistDst.path) {
+        Process.run("/bin/launchctl", args: ["unload", plistDst.path])
+        do {
+            try FileManager.default.removeItem(at: plistDst)
+        } catch {
+            fputs("error: could not remove plist: \(error)\n", stderr)
+            exit(1)
+        }
+        print("launchd agent unloaded and removed.")
+    } else {
+        print("No agent plist found — nothing to remove.")
+    }
+}
+
 func cmdSetup() {
     // Resolve the plist bundled alongside the binary: <prefix>/com.jin.sidecar-fix.plist
     let binaryURL = executableURL()
@@ -190,12 +272,16 @@ func printHelp() {
     Usage: sidecar-fix <command>
 
     Commands:
-      list    List active displays and their positions
-      save    Save current Sidecar display position
+      list       List active displays and their positions
+      save       Save current Sidecar display position
+      set <x> <y>  Move Sidecar to exact coordinates and save
       apply   Apply saved position (one-shot, called by launchd)
       daemon  Run as persistent daemon, polls every 5s (called by launchd)
-      setup   Install and load the launchd agent (run once after brew install)
-      help    Show this help message
+      setup     Install and load the launchd agent (run once after brew install)
+      stop      Unload the daemon (so you can reposition and save again)
+      start     Reload the daemon after stop
+      uninstall Unload and remove the launchd agent
+      help      Show this help message
     """)
 }
 
@@ -220,11 +306,20 @@ let cmd = args.count > 1 ? args[1] : "help"
 
 switch cmd {
 case "save":   cmdSave()
+case "set":
+    guard args.count == 4, let x = Int32(args[2]), let y = Int32(args[3]) else {
+        fputs("usage: sidecar-fix set <x> <y>\n", stderr)
+        exit(1)
+    }
+    cmdSet(x, y)
 case "apply":  cmdApply()
 case "daemon": cmdDaemon()
 case "list":   cmdList()
-case "setup":  cmdSetup()
-case "help":   printHelp()
+case "setup":     cmdSetup()
+case "stop":      cmdStop()
+case "start":     cmdStart()
+case "uninstall": cmdUninstall()
+case "help":      printHelp()
 default:
     fputs("error: unknown command '\(cmd)'\n", stderr)
     printHelp()
