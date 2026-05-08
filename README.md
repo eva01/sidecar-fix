@@ -26,9 +26,13 @@ Done. The position is restored automatically on every reconnect.
 | Command | Description |
 |---|---|
 | `sidecar-fix save` | Save the current Sidecar position |
+| `sidecar-fix set <x> <y>` | Move Sidecar to exact coordinates and save |
 | `sidecar-fix apply` | Restore saved position immediately |
 | `sidecar-fix list` | List active displays and positions |
 | `sidecar-fix setup` | (Re)install the background agent |
+| `sidecar-fix stop` | Unload the daemon (so you can reposition) |
+| `sidecar-fix start` | Reload the daemon after `stop` |
+| `sidecar-fix uninstall` | Unload and remove the launchd agent |
 
 ## Logs
 
@@ -39,8 +43,7 @@ Done. The position is restored automatically on every reconnect.
 ## Uninstall
 
 ```sh
-launchctl unload ~/Library/LaunchAgents/com.jin.sidecar-fix.plist
-rm ~/Library/LaunchAgents/com.jin.sidecar-fix.plist
+sidecar-fix uninstall
 brew uninstall sidecar-fix
 brew untap eva01/sidecar-fix
 ```

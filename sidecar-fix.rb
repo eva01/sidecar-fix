@@ -49,7 +49,7 @@ class SidecarFix < Formula
       saved Sidecar position whenever it drifts.
 
       View logs:
-        log stream --predicate 'process == "sidecar-fix"' --level info
+        log stream --predicate 'subsystem == "com.jin.sidecar-fix"' --level info
     EOS
   end
 
