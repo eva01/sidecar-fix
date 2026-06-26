@@ -36,7 +36,7 @@ Single-file Swift CLI (`Sources/SidecarFix.swift`) with no dependencies beyond m
 
 `com.jin.sidecar-fix.plist` is a `KeepAlive` launchd agent that runs `sidecar-fix daemon`. The CLI manages it with `launchctl bootstrap gui/<uid>` and `launchctl bootout gui/<uid>`.
 
-The Homebrew formula (`sidecar-fix.rb`) packages the pre-built binary and writes a prefix-correct plist. Users still run `sidecar-fix setup` once to copy that plist into `~/Library/LaunchAgents` and load it.
+The Homebrew formula (`sidecar-fix.rb`) packages only the pre-built binary. Users run `sidecar-fix setup` once; the CLI generates `~/Library/LaunchAgents/com.jin.sidecar-fix.plist` and loads it.
 
 ## Shell Safety
 

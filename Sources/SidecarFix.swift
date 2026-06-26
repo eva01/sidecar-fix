@@ -228,16 +228,6 @@ func cmdUninstall() {
 }
 
 func cmdSetup() {
-    // Resolve the plist bundled alongside the binary: <prefix>/com.jin.sidecar-fix.plist
-    let binaryURL = executableURL()
-    let prefixURL = binaryURL.deletingLastPathComponent().deletingLastPathComponent()
-    let plistSrc = prefixURL.appendingPathComponent("com.jin.sidecar-fix.plist")
-
-    guard FileManager.default.fileExists(atPath: plistSrc.path) else {
-        fputs("error: plist not found at \(plistSrc.path)\n", stderr)
-        exit(1)
-    }
-
     let launchAgents = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent("Library/LaunchAgents")
     let plistDst = launchAgents.appendingPathComponent("com.jin.sidecar-fix.plist")
@@ -247,7 +237,7 @@ func cmdSetup() {
         if FileManager.default.fileExists(atPath: plistDst.path) {
             try FileManager.default.removeItem(at: plistDst)
         }
-        try FileManager.default.copyItem(at: plistSrc, to: plistDst)
+        try launchAgentPlist(binaryPath: launchdBinaryPath()).write(to: plistDst, atomically: true, encoding: .utf8)
     } catch {
         fputs("error: could not install plist: \(error)\n", stderr)
         exit(1)
@@ -297,6 +287,37 @@ func launchctlBootstrap(_ plist: URL) -> Int32 {
 
 func launchctlBootout(_ plist: URL) -> Int32 {
     Process.run("/bin/launchctl", args: ["bootout", launchctlDomain(), plist.path])
+}
+
+func launchdBinaryPath() -> String {
+    let path = executableURL().path
+    let marker = "/Cellar/sidecar-fix/"
+    guard let range = path.range(of: marker) else { return path }
+
+    let homebrewPrefix = String(path[..<range.lowerBound])
+    return "\(homebrewPrefix)/opt/sidecar-fix/bin/sidecar-fix"
+}
+
+func launchAgentPlist(binaryPath: String) -> String {
+    """
+    <?xml version="1.0" encoding="UTF-8"?>
+    <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+    <plist version="1.0">
+    <dict>
+      <key>Label</key>
+      <string>com.jin.sidecar-fix</string>
+      <key>ProgramArguments</key>
+      <array>
+        <string>\(binaryPath)</string>
+        <string>daemon</string>
+      </array>
+      <key>KeepAlive</key>
+      <true/>
+      <key>RunAtLoad</key>
+      <true/>
+    </dict>
+    </plist>
+    """
 }
 
 extension Process {
