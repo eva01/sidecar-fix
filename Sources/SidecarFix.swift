@@ -184,11 +184,11 @@ func cmdStop() {
         fputs("error: agent plist not found — run 'sidecar-fix setup' first\n", stderr)
         exit(1)
     }
-    let result = Process.run("/bin/launchctl", args: ["unload", plistDst.path])
+    let result = launchctlBootout(plistDst)
     if result == 0 {
         print("Daemon unloaded. Arrange Sidecar, then run: sidecar-fix save && sidecar-fix start")
     } else {
-        fputs("error: launchctl unload failed (exit \(result))\n", stderr)
+        fputs("error: launchctl bootout failed (exit \(result))\n", stderr)
         exit(1)
     }
 }
@@ -200,11 +200,11 @@ func cmdStart() {
         fputs("error: agent plist not found — run 'sidecar-fix setup' first\n", stderr)
         exit(1)
     }
-    let result = Process.run("/bin/launchctl", args: ["load", plistDst.path])
+    let result = launchctlBootstrap(plistDst)
     if result == 0 {
         print("Daemon loaded.")
     } else {
-        fputs("error: launchctl load failed (exit \(result))\n", stderr)
+        fputs("error: launchctl bootstrap failed (exit \(result))\n", stderr)
         exit(1)
     }
 }
@@ -214,7 +214,7 @@ func cmdUninstall() {
         .appendingPathComponent("Library/LaunchAgents/com.jin.sidecar-fix.plist")
 
     if FileManager.default.fileExists(atPath: plistDst.path) {
-        Process.run("/bin/launchctl", args: ["unload", plistDst.path])
+        _ = launchctlBootout(plistDst)
         do {
             try FileManager.default.removeItem(at: plistDst)
         } catch {
@@ -253,11 +253,11 @@ func cmdSetup() {
         exit(1)
     }
 
-    // Unload first in case the agent is already registered, then reload.
-    Process.run("/bin/launchctl", args: ["unload", plistDst.path])
-    let result = Process.run("/bin/launchctl", args: ["load", plistDst.path])
+    // Boot out first in case the agent is already registered, then bootstrap.
+    _ = launchctlBootout(plistDst)
+    let result = launchctlBootstrap(plistDst)
     guard result == 0 else {
-        fputs("error: launchctl load failed (exit \(result))\n", stderr)
+        fputs("error: launchctl bootstrap failed (exit \(result))\n", stderr)
         exit(1)
     }
 
@@ -286,6 +286,18 @@ func printHelp() {
 }
 
 // MARK: - Helpers
+
+func launchctlDomain() -> String {
+    "gui/\(getuid())"
+}
+
+func launchctlBootstrap(_ plist: URL) -> Int32 {
+    Process.run("/bin/launchctl", args: ["bootstrap", launchctlDomain(), plist.path])
+}
+
+func launchctlBootout(_ plist: URL) -> Int32 {
+    Process.run("/bin/launchctl", args: ["bootout", launchctlDomain(), plist.path])
+}
 
 extension Process {
     @discardableResult

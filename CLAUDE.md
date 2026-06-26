@@ -29,13 +29,14 @@ Single-file Swift CLI (`Sources/SidecarFix.swift`) with no dependencies beyond m
 - **`CoreGraphics`** — display enumeration (`CGGetActiveDisplayList`), bounds (`CGDisplayBounds`), and repositioning (`CGBeginDisplayConfiguration` / `CGConfigureDisplayOrigin` / `CGCompleteDisplayConfiguration`)
 - **Config** — saved as JSON at `~/.config/sidecar-fix/arrangement.json` (`Arrangement` struct: `x`, `y` Int32)
 - **Sidecar display detection** — `findSidecarDisplay()` returns the first active display that is neither main nor builtin
-- **`apply` command** — sleeps 2 s (`sidecarApplyDelay`) before acting to let macOS finish its own reconfiguration after a display event; exits 0 silently if no Sidecar is connected (WatchPaths fires on all display changes, not just Sidecar)
+- **`apply` command** — sleeps 2 s (`sidecarApplyDelay`) before acting to let macOS finish its own reconfiguration after a display event; exits 0 silently if no Sidecar is connected
+- **`daemon` command** — polls every 5 s and spawns `apply` through the user's launchd GUI domain when the saved position drifts
 
 ## launchd Integration
 
-`com.jin.sidecar-fix.plist` is a `WatchPaths` launchd agent that fires `sidecar-fix apply` whenever `/Library/Preferences/com.apple.windowserver.displays.plist` changes. Logs go to `/tmp/sidecar-fix.log` and `/tmp/sidecar-fix.err`.
+`com.jin.sidecar-fix.plist` is a `KeepAlive` launchd agent that runs `sidecar-fix daemon`. The CLI manages it with `launchctl bootstrap gui/<uid>` and `launchctl bootout gui/<uid>`.
 
-The Homebrew formula (`sidecar-fix.rb`) packages the pre-built binary and handles `post_install` launchd loading.
+The Homebrew formula (`sidecar-fix.rb`) packages the pre-built binary and writes a prefix-correct plist. Users still run `sidecar-fix setup` once to copy that plist into `~/Library/LaunchAgents` and load it.
 
 ## Shell Safety
 

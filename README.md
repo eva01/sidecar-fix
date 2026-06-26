@@ -56,5 +56,5 @@ Requires Xcode Command Line Tools (`xcode-select --install`).
 git clone https://github.com/eva01/sidecar-fix
 cd sidecar-fix
 make install
-sidecar-fix setup && sidecar-fix save
+sidecar-fix save
 ```
